@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "Financial Complaint Intelligence"
+type: software
+authors:
+  - family-names: "Keenan"
+    given-names: "William"
+abstract: >-
+  An evidence-first machine-learning portfolio project for calibrated
+  financial complaint classification and human-review routing.
+license: Apache-2.0

@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "financial-complaint-intelligence"
+version = "0.1.0"
+description = "Calibrated financial complaint classification with human-review routing"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "William Keenan" }]
+dependencies = [
+  "joblib>=1.4,<2",
+  "matplotlib>=3.9,<4",
+  "numpy>=2.0,<3",
+  "pandas>=2.2,<3",
+  "requests>=2.32,<3",
+  "scikit-learn>=1.6,<2",
+  "scipy>=1.14,<2",
+  "torch>=2.8,<3",
+  "transformers>=4.57,<5",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3,<9", "ruff>=0.12,<1"]
+demo = ["gradio>=5.44,<6", "huggingface-hub>=0.34,<1"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests", "space/tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

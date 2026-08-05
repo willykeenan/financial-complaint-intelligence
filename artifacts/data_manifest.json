@@ -1,0 +1,85 @@
+{
+  "deduplication": {
+    "conflict_count": 17,
+    "duplicate_count": 116,
+    "input_count": 4000,
+    "output_count": 3867
+  },
+  "privacy": {
+    "complaint_ids_published": false,
+    "note": "Local text and CSV files are gitignored; rerun against the source API.",
+    "raw_narratives_published": false
+  },
+  "retrieved_at": "2026-08-05T15:23:15.495980+00:00",
+  "sampling": {
+    "export_limit_note": "CFPB filtered CSV exports may be capped at 100,000 rows.",
+    "exported_counts": {
+      "Checking or savings account": 6624,
+      "Credit card": 9292,
+      "Credit reporting or other personal consumer reports": 109631,
+      "Debt collection": 15116,
+      "Money transfer, virtual currency, or money service": 2496,
+      "Mortgage": 3138,
+      "Student loan": 2307,
+      "Vehicle loan or lease": 1883
+    },
+    "method": "deterministic evenly spaced rows within each filtered CSV export",
+    "requested_per_product": 500
+  },
+  "schema_version": 1,
+  "source": {
+    "api": "https://www.consumerfinance.gov/data-research/consumer-complaints/search/api/v1/",
+    "api_last_updated": "2026-08-05T12:00:00-05:00",
+    "has_narrative": true,
+    "license": "CC0-1.0",
+    "name": "CFPB Consumer Complaint Database",
+    "window": {
+      "end": "2024-03-31",
+      "start": "2024-01-01"
+    }
+  },
+  "splits": {
+    "calibration": {
+      "class_counts": {
+        "Checking or savings account": 75,
+        "Credit card": 70,
+        "Credit reporting or other personal consumer reports": 67,
+        "Debt collection": 67,
+        "Money transfer, virtual currency, or money service": 75,
+        "Mortgage": 75,
+        "Student loan": 75,
+        "Vehicle loan or lease": 75
+      },
+      "count": 579,
+      "local_content_sha256": "64c1967ea10ce0edf0b81a0ee39203057f2e78ddb95ddbf031a0cb08f94ebe7a"
+    },
+    "test": {
+      "class_counts": {
+        "Checking or savings account": 75,
+        "Credit card": 71,
+        "Credit reporting or other personal consumer reports": 68,
+        "Debt collection": 69,
+        "Money transfer, virtual currency, or money service": 75,
+        "Mortgage": 75,
+        "Student loan": 75,
+        "Vehicle loan or lease": 75
+      },
+      "count": 583,
+      "local_content_sha256": "be75fbd73dac99cf675f39ff804c541a98814874105d2966672b2da02dddea08"
+    },
+    "train": {
+      "class_counts": {
+        "Checking or savings account": 350,
+        "Credit card": 327,
+        "Credit reporting or other personal consumer reports": 313,
+        "Debt collection": 315,
+        "Money transfer, virtual currency, or money service": 350,
+        "Mortgage": 350,
+        "Student loan": 350,
+        "Vehicle loan or lease": 350
+      },
+      "count": 2705,
+      "local_content_sha256": "6a400e231e441705b5f3a57f66800d8d5b8d2bbb7159d86f6629d488869d30bf"
+    }
+  }
+}

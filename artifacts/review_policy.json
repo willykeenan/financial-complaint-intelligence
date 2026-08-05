@@ -1,0 +1,7 @@
+{
+  "accepted_accuracy": 0.9006849315068494,
+  "accepted_count": 292,
+  "coverage": 0.5043177892918825,
+  "target_met": true,
+  "threshold": 0.7417229702202549
+}
