@@ -4,31 +4,27 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import hashlib
 import json
-import re
 import subprocess
+import zipfile
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import requests
 
 from complaint_intelligence.config import PRODUCTS, ExperimentConfig
 from complaint_intelligence.data import deduplicate_records, narrative_hash
 
 API_URL = "https://www.consumerfinance.gov/data-research/consumer-complaints/search/api/v1/"
+FULL_SNAPSHOT_URL = "https://files.consumerfinance.gov/ccdb/complaints.csv.zip"
 PROTOCOL_ID = "fci.forward-holdout.2024q2.v1"
 HOLDOUT_START = "2024-04-01"
 HOLDOUT_END = "2024-06-30"
 SAMPLES_PER_PRODUCT = 500
-
-
-def _slug(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
 
 
 def _sample_evenly(rows: list[dict[str, Any]], count: int) -> list[dict[str, Any]]:
@@ -38,65 +34,92 @@ def _sample_evenly(rows: list[dict[str, Any]], count: int) -> list[dict[str, Any
     return [rows[index] for index in indices]
 
 
-def _fetch_product(
-    product: str,
-    config: ExperimentConfig,
-    cache_dir: Path,
-) -> tuple[str, list[dict[str, Any]], int]:
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    export_path = cache_dir / f"{_slug(product)}.csv"
+def _download_snapshot(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if zipfile.is_zipfile(path):
+        return
     command = [
         "curl",
         "--fail",
         "--silent",
         "--show-error",
         "--retry",
-        "5",
+        "10",
         "--retry-all-errors",
+        "--retry-delay",
+        "5",
         "--connect-timeout",
         "15",
         "--max-time",
-        "240",
-        "--get",
-        API_URL,
-        "--data-urlencode",
-        f"date_received_min={config.start_date}",
-        "--data-urlencode",
-        f"date_received_max={config.end_date}",
-        "--data-urlencode",
-        "field=all",
-        "--data-urlencode",
-        "has_narrative=true",
-        "--data-urlencode",
-        f"product={product}",
-        "--data-urlencode",
-        "format=csv",
-        "--data-urlencode",
-        "no_aggs=true",
+        "3600",
+        "--continue-at",
+        "-",
+        FULL_SNAPSHOT_URL,
         "--output",
-        str(export_path),
+        str(path),
     ]
     subprocess.run(command, check=True)
-    rows: list[dict[str, Any]] = []
-    with export_path.open(encoding="utf-8-sig", newline="") as handle:
-        for source in csv.DictReader(handle):
-            narrative = source.get("Consumer complaint narrative")
-            if source.get("Product") != product or not narrative:
-                continue
-            received = str(source.get("Date received", ""))
-            if not HOLDOUT_START <= received <= HOLDOUT_END:
-                continue
-            rows.append(
-                {
-                    "complaint_id": str(source.get("Complaint ID", "")),
-                    "date_received": received,
-                    "issue": str(source.get("Issue", "")),
-                    "label": product,
-                    "text": narrative,
-                }
+    if not zipfile.is_zipfile(path):
+        raise ValueError(f"downloaded CFPB snapshot is not a valid ZIP: {path}")
+
+
+def _sample_snapshot(
+    snapshot: Path,
+    config: ExperimentConfig,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    columns = [
+        "Product",
+        "Consumer complaint narrative",
+        "Date received",
+        "Complaint ID",
+        "Issue",
+    ]
+    by_product: dict[str, list[dict[str, Any]]] = {product: [] for product in PRODUCTS}
+    with zipfile.ZipFile(snapshot) as archive:
+        members = [name for name in archive.namelist() if name.lower().endswith(".csv")]
+        if len(members) != 1:
+            raise ValueError("expected exactly one CSV in the CFPB snapshot")
+        with archive.open(members[0]) as handle:
+            chunks = pd.read_csv(
+                handle,
+                usecols=columns,
+                dtype=str,
+                keep_default_na=False,
+                chunksize=100_000,
+                low_memory=False,
             )
-    rows.sort(key=lambda row: (row["date_received"], row["complaint_id"]))
-    return product, _sample_evenly(rows, config.samples_per_product), len(rows)
+            for chunk in chunks:
+                mask = (
+                    chunk["Product"].isin(PRODUCTS)
+                    & (chunk["Consumer complaint narrative"] != "")
+                    & (chunk["Date received"] >= HOLDOUT_START)
+                    & (chunk["Date received"] <= HOLDOUT_END)
+                )
+                selected = chunk.loc[mask, columns]
+                for product, narrative, received, complaint_id, issue in selected.itertuples(
+                    index=False,
+                    name=None,
+                ):
+                    by_product[str(product)].append(
+                        {
+                            "complaint_id": str(complaint_id),
+                            "date_received": str(received),
+                            "issue": str(issue),
+                            "label": str(product),
+                            "text": str(narrative),
+                        }
+                    )
+
+    sampled: list[dict[str, Any]] = []
+    exported_counts: dict[str, int] = {}
+    for product in PRODUCTS:
+        rows = by_product[product]
+        rows.sort(key=lambda row: (row["date_received"], row["complaint_id"]))
+        exported_counts[product] = len(rows)
+        product_sample = _sample_evenly(rows, config.samples_per_product)
+        sampled.extend(product_sample)
+        print(f"sampled {len(product_sample):4d} / {len(rows):6d} exported {product}")
+    return sampled, exported_counts
 
 
 def _file_sha256(path: Path) -> str:
@@ -134,28 +157,26 @@ def _reference_hashes(reference_data_dir: Path) -> tuple[set[str], dict[str, str
     return hashes, file_hashes
 
 
-def _api_metadata(config: ExperimentConfig) -> dict[str, Any]:
-    response = requests.get(
-        API_URL,
-        params={
-            "date_received_min": config.start_date,
-            "date_received_max": config.end_date,
-            "has_narrative": "true",
-            "size": 1,
-            "no_aggs": "true",
-        },
+def _snapshot_metadata() -> dict[str, Any]:
+    response = requests.head(
+        FULL_SNAPSHOT_URL,
         headers={"User-Agent": "financial-complaint-intelligence/0.1"},
         timeout=30,
     )
     if response.status_code != 200:
         return {}
-    return response.json().get("_meta", {})
+    return {
+        "etag": response.headers.get("ETag"),
+        "last_modified": response.headers.get("Last-Modified"),
+        "content_length": response.headers.get("Content-Length"),
+    }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--reference-data-dir", type=Path, default=Path("data/processed"))
     parser.add_argument("--output", type=Path, default=Path("data/forward_holdout"))
+    parser.add_argument("--snapshot", type=Path)
     parser.add_argument(
         "--manifest",
         type=Path,
@@ -169,18 +190,9 @@ def main() -> int:
     )
     reference_hashes, reference_file_hashes = _reference_hashes(args.reference_data_dir)
 
-    rows: list[dict[str, Any]] = []
-    exported_counts: dict[str, int] = {}
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        futures = {
-            pool.submit(_fetch_product, product, config, args.output / "cache"): product
-            for product in PRODUCTS
-        }
-        for future in as_completed(futures):
-            product, sampled, exported_count = future.result()
-            exported_counts[product] = exported_count
-            rows.extend(sampled)
-            print(f"sampled {len(sampled):4d} / {exported_count:6d} exported {product}")
+    snapshot = args.snapshot or args.output / "cache" / "complaints.csv.zip"
+    _download_snapshot(snapshot)
+    rows, exported_counts = _sample_snapshot(snapshot, config)
 
     deduplicated, dedup_stats = deduplicate_records(rows)
     holdout = [row for row in deduplicated if str(row["narrative_hash"]) not in reference_hashes]
@@ -190,7 +202,7 @@ def main() -> int:
     )
     output_path = args.output / "holdout.jsonl"
     content_sha = _write_jsonl(output_path, holdout)
-    api_meta = _api_metadata(config)
+    snapshot_meta = _snapshot_metadata()
     manifest = {
         "schema_version": 1,
         "protocol_id": PROTOCOL_ID,
@@ -198,15 +210,22 @@ def main() -> int:
         "source": {
             "name": "CFPB Consumer Complaint Database",
             "api": API_URL,
-            "api_last_updated": api_meta.get("last_updated"),
+            "full_snapshot_url": FULL_SNAPSHOT_URL,
+            "full_snapshot_sha256": _file_sha256(snapshot),
+            "snapshot_etag": snapshot_meta.get("etag"),
+            "snapshot_last_modified": snapshot_meta.get("last_modified"),
+            "snapshot_content_length": snapshot_meta.get("content_length"),
             "window": {"start": HOLDOUT_START, "end": HOLDOUT_END},
             "has_narrative": True,
         },
         "sampling": {
-            "method": "deterministic evenly spaced rows within each filtered CSV export",
+            "method": (
+                "local quarter/product/narrative filter over the official full CSV snapshot, "
+                "then deterministic evenly spaced rows within each sorted product"
+            ),
             "requested_per_product": SAMPLES_PER_PRODUCT,
             "exported_counts": dict(sorted(exported_counts.items())),
-            "export_limit_note": "Filtered CFPB CSV exports can change as source data is revised.",
+            "source_revision_note": "The full daily snapshot can change as source data is revised.",
         },
         "deduplication": {
             **dedup_stats,
@@ -223,7 +242,7 @@ def main() -> int:
             "raw_narratives_published": False,
             "complaint_ids_published": False,
             "row_level_predictions_published": False,
-            "note": "Raw Q1/Q2 rows and downloaded CSV files remain local and gitignored.",
+            "note": "Raw Q1/Q2 rows and the full CSV snapshot remain local and gitignored.",
         },
     }
     args.manifest.parent.mkdir(parents=True, exist_ok=True)

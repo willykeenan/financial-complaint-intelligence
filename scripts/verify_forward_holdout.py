@@ -127,6 +127,7 @@ def main() -> int:
         raise ValueError("primary decision does not follow the frozen rule")
 
     hashes = [
+        manifest["source"]["full_snapshot_sha256"],
         manifest["holdout"]["local_content_sha256"],
         metrics["data"]["manifest_sha256"],
         metrics["data"]["local_content_sha256"],

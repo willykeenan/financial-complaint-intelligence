@@ -18,7 +18,8 @@ until this protocol and its evaluation code exist in an earlier Git commit.
 
 ## Frozen data design
 
-- Source: CFPB Consumer Complaint Database filtered CSV export.
+- Source: CFPB Consumer Complaint Database full daily CSV ZIP, filtered locally before
+  sampling.
 - Holdout window: 2024-04-01 through 2024-06-30, inclusive.
 - Classes: the same ordered eight product labels in
   `src/complaint_intelligence/config.py`.
@@ -106,6 +107,17 @@ An outcome-affecting change after Q2 acquisition or prediction requires a new pr
 and a genuinely untouched future window. A code defect discovered before any Q2 outcome is
 read may be corrected in a new pre-results commit with a written amendment. Failed or
 unfavorable outcomes are retained and reported without post-hoc tuning.
+
+### Pre-results acquisition amendment — 2026-08-07
+
+The first acquisition attempt returned only HTTP 500 and 429 failures from the CFPB
+filtered-export endpoint; it produced no holdout rows, predictions, or outcomes. CFPB
+Release 23 also documents that JSON export is retired and filtered CSV export is capped.
+Before any Q2 data was acquired or inspected, transport was amended to the official full
+daily CSV ZIP, followed by local filtering to the same frozen quarter, narrative-present
+rule, and product labels. Sorting, sample count, deduplication, cross-period exclusion,
+models, metrics, and decision rules are unchanged. The full ZIP digest is recorded in the
+aggregate manifest so the source snapshot remains identifiable.
 
 ## Boundaries
 
