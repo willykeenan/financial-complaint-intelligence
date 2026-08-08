@@ -6,6 +6,8 @@ An evidence-first machine-learning portfolio project for classifying public fina
 
 > **Current status:** the frozen experiment completed on 2026-08-05. The classical baseline won the locked comparison; the precommitted transformer-improvement hypothesis was **not supported**. Raw complaint text is not included in this repository. Hugging Face hosting is reported only when a live link appears below.
 
+> **Follow-up status:** a [2024 Q2 forward-holdout protocol](docs/FORWARD_HOLDOUT_PROTOCOL.md) is frozen before acquiring the new holdout. No forward-holdout result is claimed until a later commit publishes privacy-safe aggregate evidence from the unchanged models.
+
 ## What this project demonstrates
 
 The project is designed around a practical question: can a text classifier be useful without pretending every prediction is equally trustworthy?
@@ -141,6 +143,7 @@ Use the [model card template](docs/MODEL_CARD_TEMPLATE.md) before publishing any
 | --- | --- |
 | [`docs/EXPERIMENT.md`](docs/EXPERIMENT.md) | Frozen hypothesis, design, decision rule, and boundaries |
 | [`docs/ERROR_ANALYSIS.md`](docs/ERROR_ANALYSIS.md) | Aggregate failure analysis and evidence-based next experiments |
+| [`docs/FORWARD_HOLDOUT_PROTOCOL.md`](docs/FORWARD_HOLDOUT_PROTOCOL.md) | Frozen Q2 temporal-holdout design and decision rules |
 | [`docs/MODEL_CARD_TEMPLATE.md`](docs/MODEL_CARD_TEMPLATE.md) | Placeholder-first documentation for a future trained artifact |
 | [`src/complaint_intelligence/config.py`](src/complaint_intelligence/config.py) | Fixed date window, labels, model revision, seed, and training settings |
 | [`src/complaint_intelligence/data.py`](src/complaint_intelligence/data.py) | Normalization, hashing, deduplication, and temporal splitting |
