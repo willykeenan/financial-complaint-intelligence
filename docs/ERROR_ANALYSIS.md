@@ -37,10 +37,15 @@ Student loans were the transformer's strongest class by recall: 67 of 75 test re
 
 ## Next experiments, in order
 
-1. Calibrate the winning logistic-regression baseline and compare its risk-coverage curve with the transformer under the same protocol.
-2. Test a hierarchical classifier that first separates account, credit, lending, and money-movement families, then predicts the detailed product.
-3. Pre-register class-conditional review thresholds and evaluate both accuracy and coverage with uncertainty intervals.
-4. Add temporal drift slices and institution-external validation before any operational recommendation.
-5. Measure end-to-end latency, memory, and cost so model quality is evaluated alongside workflow impact.
+The first follow-up is complete: the baseline was calibrated only on the original Q1
+calibration split, then both frozen models were evaluated on a preregistered Q2 holdout. The
+baseline preserved a +0.0500 macro-F1 advantage (paired 95% bootstrap interval +0.0362 to
++0.0634) and transferred its review policy at 90.07% accepted accuracy and 77.48% coverage.
+See the [forward-holdout results](FORWARD_HOLDOUT_RESULTS.md).
+
+1. Test a hierarchical classifier that first separates account, credit, lending, and money-movement families, then predicts the detailed product.
+2. Pre-register class-conditional review thresholds and evaluate both accuracy and coverage with uncertainty intervals.
+3. Add later temporal slices and institution-external validation before any operational recommendation.
+4. Measure end-to-end latency, memory, and cost so model quality is evaluated alongside workflow impact.
 
 No error narrative is reproduced here. Qualitative text review would require a separate privacy-controlled process and explicit rules for handling potentially identifying content.

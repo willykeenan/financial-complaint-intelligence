@@ -51,3 +51,6 @@ jobs:
 
       - name: Test
         run: make test
+
+      - name: Verify aggregate evidence
+        run: make verify-evidence

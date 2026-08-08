@@ -4,7 +4,7 @@
 
 An evidence-first machine-learning portfolio project for classifying public financial complaint narratives, evaluating confidence calibration, and routing uncertain cases to human review.
 
-> **Current status:** the frozen experiment completed on 2026-08-05. The classical baseline won the locked comparison; the precommitted transformer-improvement hypothesis was **not supported**. Raw complaint text is not included in this repository. Hugging Face hosting is reported only when a live link appears below.
+> **Current status:** the frozen Q1 experiment and preregistered Q2 forward holdout are complete. The classical baseline won both comparisons; on Q2 it reached **0.8040 macro-F1** versus **0.7540** for DistilBERT, a paired delta of **+0.0500** with a 95% bootstrap interval of **+0.0362 to +0.0634**. Raw complaint text is not included in this repository. Hugging Face hosting is reported only when a live link appears below.
 
 ## What this project demonstrates
 
@@ -15,6 +15,7 @@ The project is designed around a practical question: can a text classifier be us
 - **Leakage-aware evaluation:** deduplicate narratives before splitting, exclude cross-label text conflicts, and split chronologically within each product.
 - **Calibrated uncertainty:** fit one temperature on a separate calibration split, then evaluate on a later locked test split.
 - **Human-review routing:** select a confidence threshold on calibration data; defer low-confidence cases and fail closed if the target cannot be met.
+- **Prospective temporal evidence:** freeze a later-quarter protocol and code before acquisition, then evaluate both unchanged models without Q2 tuning.
 - **Auditable evidence:** report macro-F1, per-class metrics, uncertainty intervals, calibration measures, confusion structure, and risk versus coverage.
 
 The primary hypothesis and listed experimental choices were recorded before observing outcomes. See the [frozen experiment protocol](docs/EXPERIMENT.md).
@@ -65,6 +66,31 @@ The aggregate [error analysis](docs/ERROR_ANALYSIS.md) breaks down class-level p
 
 ![Calibrated reliability plot](artifacts/reliability.png)
 
+## Preregistered Q2 forward holdout
+
+The [follow-up protocol](docs/FORWARD_HOLDOUT_PROTOCOL.md) was pushed before acquiring the
+2024 Q2 holdout. It calibrated the winning baseline only on the original Q1 calibration
+split, reused DistilBERT's frozen Q1 policy, and evaluated both unchanged models on 3,664
+later records after exact deduplication and cross-period overlap removal.
+
+| Model / policy | Q2 forward-holdout result |
+| --- | ---: |
+| TF-IDF word + character logistic baseline | **0.8040 macro-F1**, 0.8111 accuracy |
+| Two-epoch DistilBERT | 0.7540 macro-F1, 0.7642 accuracy |
+| Paired macro-F1 delta | **+0.0500** (95% bootstrap: +0.0362 to +0.0634) |
+| Calibrated baseline accepted cases | **0.9007 accuracy at 0.7748 coverage** |
+| Accepted-accuracy 95% Wilson interval | 0.8891–0.9111 |
+
+Both preregistered decision rules passed. The baseline won all eight classes and was better
+calibrated overall. DistilBERT's accepted subset was more accurate (0.9256), but its policy
+covered only 0.4992 of Q2 and sent 1,010 more cases to review. See the
+[full aggregate results](docs/FORWARD_HOLDOUT_RESULTS.md) for the tradeoff, hashes, and
+limits.
+
+![Q2 forward-holdout risk versus coverage](artifacts/forward_holdout_risk_coverage.png)
+
+![Q2 forward-holdout reliability](artifacts/forward_holdout_reliability.png)
+
 ## Quickstart
 
 Python 3.10 or newer is required. The project metadata and dependencies live in [`pyproject.toml`](pyproject.toml).
@@ -108,7 +134,7 @@ The code separates three questions that are often blurred together:
 
 1. **Does the classifier predict the right product?** Compare macro-F1, accuracy, per-class performance, and a confusion matrix.
 2. **Does confidence correspond to observed correctness?** Inspect negative log likelihood, 15-bin expected calibration error, and a reliability plot after temperature scaling.
-3. **What happens when uncertain cases are deferred?** Select the review threshold on calibration data, then report test coverage, accepted accuracy, a Wilson interval, and the full risk-coverage curve.
+3. **What happens when uncertain cases are deferred?** Select the review threshold on calibration data, then report later coverage, accepted accuracy, a Wilson interval, and an aggregate risk-coverage curve.
 
 The 90% accepted-accuracy value in the protocol is a **calibration-set threshold-selection target**, not a promise of 90% future accuracy. If no threshold reaches that target on calibration data, the policy accepts zero cases. Even when the calibration target is met, the later test result and its uncertainty interval must be reported separately.
 
@@ -118,6 +144,8 @@ Expected result artifacts from a completed run include:
 - `artifacts/metrics.json` — baseline and transformer metrics, hypothesis decision, calibration diagnostics, and selective-prediction results;
 - `artifacts/confusion_matrix.png` and `artifacts/reliability.png` — diagnostic plots;
 - `artifacts/temperature.json` and `artifacts/review_policy.json` — calibrated inference parameters.
+- `artifacts/forward_holdout_manifest.json` and `artifacts/forward_holdout_metrics.json` — privacy-safe Q2 sampling, provenance, results, and frozen decisions;
+- `artifacts/forward_holdout_risk_coverage.png` and `artifacts/forward_holdout_reliability.png` — Q2 selective-prediction and calibration diagnostics.
 
 The aggregate manifest, metrics, policy files, and plots in this repository are the retained public evidence from the completed run. Model weights and source narratives remain outside GitHub.
 
@@ -127,7 +155,7 @@ The aggregate manifest, metrics, policy files, and plots in this repository are 
 - Public availability is not the same as low sensitivity. Narratives may contain personal, financial, or identifying details.
 - CFPB complaints are self-selected reports, not a representative sample of customers, institutions, geographies, or future traffic.
 - Dataset product labels are administrative source labels; they are not verified customer intent, complaint validity, fault, urgency, or eligibility labels.
-- A chronological split reduces one form of leakage but a single 2024 quarter does not establish robustness to long-term drift or new products.
+- A chronological split and one later adjacent quarter reduce one form of leakage but do not establish robustness to long-term drift, current traffic, or new products.
 - No protected-group, language, dialect, institution-specific, adversarial, or out-of-distribution evaluation is currently claimed.
 - Calibration metrics are estimates for a specific frozen sample. A confidence score is not a guarantee that a prediction is correct.
 - `auto_route` is an experimental recommendation emitted by the local wrapper, not evidence of deployed automation or authorization for a consequential action.
@@ -141,6 +169,8 @@ Use the [model card template](docs/MODEL_CARD_TEMPLATE.md) before publishing any
 | --- | --- |
 | [`docs/EXPERIMENT.md`](docs/EXPERIMENT.md) | Frozen hypothesis, design, decision rule, and boundaries |
 | [`docs/ERROR_ANALYSIS.md`](docs/ERROR_ANALYSIS.md) | Aggregate failure analysis and evidence-based next experiments |
+| [`docs/FORWARD_HOLDOUT_PROTOCOL.md`](docs/FORWARD_HOLDOUT_PROTOCOL.md) | Frozen Q2 temporal-holdout design and decision rules |
+| [`docs/FORWARD_HOLDOUT_RESULTS.md`](docs/FORWARD_HOLDOUT_RESULTS.md) | Q2 results, uncertainty, tradeoffs, provenance, and limits |
 | [`docs/MODEL_CARD_TEMPLATE.md`](docs/MODEL_CARD_TEMPLATE.md) | Placeholder-first documentation for a future trained artifact |
 | [`src/complaint_intelligence/config.py`](src/complaint_intelligence/config.py) | Fixed date window, labels, model revision, seed, and training settings |
 | [`src/complaint_intelligence/data.py`](src/complaint_intelligence/data.py) | Normalization, hashing, deduplication, and temporal splitting |
@@ -149,6 +179,9 @@ Use the [model card template](docs/MODEL_CARD_TEMPLATE.md) before publishing any
 | [`src/complaint_intelligence/predict.py`](src/complaint_intelligence/predict.py) | Local calibrated inference and human-review recommendation wrapper |
 | [`scripts/fetch_data.py`](scripts/fetch_data.py) | Bounded CFPB API acquisition and local manifest generation |
 | [`scripts/run_experiment.py`](scripts/run_experiment.py) | Baseline, transformer, calibration, and locked-test pipeline |
+| [`scripts/fetch_forward_holdout.py`](scripts/fetch_forward_holdout.py) | Private-local Q2 snapshot filtering, sampling, and aggregate manifest |
+| [`scripts/run_forward_holdout.py`](scripts/run_forward_holdout.py) | Frozen-model Q2 evaluation and aggregate diagnostics |
+| [`scripts/verify_forward_holdout.py`](scripts/verify_forward_holdout.py) | Fail-closed aggregate evidence and privacy-boundary verifier |
 | [`tests/`](tests/) | Focused tests for deterministic and fail-closed behavior |
 | [`space/`](space/) | Self-contained Gradio interface and offline inference-contract tests |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Read-only CI for lint, formatting, and tests |
