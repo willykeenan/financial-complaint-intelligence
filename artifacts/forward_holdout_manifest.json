@@ -1,0 +1,67 @@
+{
+  "deduplication": {
+    "conflict_count": 64,
+    "cross_period_overlap_excluded": 37,
+    "duplicate_count": 235,
+    "holdout_count": 3664,
+    "input_count": 4000,
+    "output_count": 3701
+  },
+  "holdout": {
+    "class_counts": {
+      "Checking or savings account": 500,
+      "Credit card": 454,
+      "Credit reporting or other personal consumer reports": 398,
+      "Debt collection": 314,
+      "Money transfer, virtual currency, or money service": 500,
+      "Mortgage": 500,
+      "Student loan": 500,
+      "Vehicle loan or lease": 498
+    },
+    "count": 3664,
+    "local_content_sha256": "6a285f1696c4c6972569631edb594d79389ce05496011f62f9564210c3e7b251"
+  },
+  "privacy": {
+    "complaint_ids_published": false,
+    "note": "Raw Q1/Q2 rows and the full CSV snapshot remain local and gitignored.",
+    "raw_narratives_published": false,
+    "row_level_predictions_published": false
+  },
+  "protocol_id": "fci.forward-holdout.2024q2.v1",
+  "reference_q1_split_sha256": {
+    "calibration": "64c1967ea10ce0edf0b81a0ee39203057f2e78ddb95ddbf031a0cb08f94ebe7a",
+    "test": "be75fbd73dac99cf675f39ff804c541a98814874105d2966672b2da02dddea08",
+    "train": "6a400e231e441705b5f3a57f66800d8d5b8d2bbb7159d86f6629d488869d30bf"
+  },
+  "retrieved_at": "2026-08-08T00:48:20.337332+00:00",
+  "sampling": {
+    "exported_counts": {
+      "Checking or savings account": 7183,
+      "Credit card": 9857,
+      "Credit reporting or other personal consumer reports": 155362,
+      "Debt collection": 19597,
+      "Money transfer, virtual currency, or money service": 2309,
+      "Mortgage": 2877,
+      "Student loan": 1947,
+      "Vehicle loan or lease": 1831
+    },
+    "method": "local quarter/product/narrative filter over the official full CSV snapshot, then deterministic evenly spaced rows within each sorted product",
+    "requested_per_product": 500,
+    "source_revision_note": "The full daily snapshot can change as source data is revised."
+  },
+  "schema_version": 1,
+  "source": {
+    "api": "https://www.consumerfinance.gov/data-research/consumer-complaints/search/api/v1/",
+    "full_snapshot_sha256": "cf18cfbc46d496ffc12f2e320ae38e533aa6b4813e7ecabac31c63623dc224a2",
+    "full_snapshot_url": "https://files.consumerfinance.gov/ccdb/complaints.csv.zip",
+    "has_narrative": true,
+    "name": "CFPB Consumer Complaint Database",
+    "snapshot_content_length": null,
+    "snapshot_etag": null,
+    "snapshot_last_modified": null,
+    "window": {
+      "end": "2024-06-30",
+      "start": "2024-04-01"
+    }
+  }
+}
