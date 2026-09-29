@@ -7,6 +7,11 @@ from complaint_intelligence.calibration import (
     select_confidence_threshold,
     softmax,
 )
+from complaint_intelligence.forward_holdout import (
+    apply_probability_temperature,
+    probability_logits,
+    selective_policy_metrics,
+)
 
 
 def test_softmax_rows_sum_to_one() -> None:
@@ -50,3 +55,43 @@ def test_selective_policy_fails_closed_when_target_is_impossible() -> None:
     assert policy["target_met"] is False
     assert policy["accepted_count"] == 0
     assert policy["coverage"] == 0.0
+
+
+def test_probability_temperature_one_preserves_normalized_probabilities() -> None:
+    probabilities = np.array([[0.8, 0.2], [0.25, 0.75]])
+    np.testing.assert_allclose(
+        apply_probability_temperature(probabilities, 1.0),
+        probabilities,
+    )
+    assert probability_logits(probabilities).shape == probabilities.shape
+
+
+def test_forward_policy_is_disabled_when_calibration_target_failed() -> None:
+    probabilities = np.array([[0.95, 0.05], [0.1, 0.9]])
+    labels = np.array([0, 1])
+    result = selective_policy_metrics(
+        probabilities,
+        labels,
+        threshold=0.8,
+        policy_enabled=False,
+    )
+    assert result["accepted_count"] == 0
+    assert result["review_count"] == 2
+    assert result["coverage"] == 0.0
+    assert result["accepted_accuracy"] is None
+
+
+def test_forward_policy_reports_wilson_interval_for_accepted_cases() -> None:
+    probabilities = np.array([[0.95, 0.05], [0.8, 0.2], [0.45, 0.55]])
+    labels = np.array([0, 1, 1])
+    result = selective_policy_metrics(
+        probabilities,
+        labels,
+        threshold=0.75,
+        policy_enabled=True,
+    )
+    assert result["accepted_count"] == 2
+    assert result["review_count"] == 1
+    assert result["accepted_accuracy"] == 0.5
+    assert result["accepted_accuracy_wilson_95"]["low"] < 0.5
+    assert result["accepted_accuracy_wilson_95"]["high"] > 0.5

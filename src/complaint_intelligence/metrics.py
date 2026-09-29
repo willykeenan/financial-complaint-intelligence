@@ -106,6 +106,60 @@ def bootstrap_macro_f1(
     }
 
 
+def paired_bootstrap_macro_f1_difference(
+    labels: np.ndarray,
+    left_predictions: np.ndarray,
+    right_predictions: np.ndarray,
+    *,
+    n_resamples: int = 5_000,
+    seed: int = 53353,
+    confidence: float = 0.95,
+) -> dict[str, float | int]:
+    """Return a paired bootstrap interval for left minus right macro-F1."""
+    targets = np.asarray(labels, dtype=np.int64)
+    left = np.asarray(left_predictions, dtype=np.int64)
+    right = np.asarray(right_predictions, dtype=np.int64)
+    if (
+        targets.ndim != 1
+        or targets.shape != left.shape
+        or targets.shape != right.shape
+        or len(targets) == 0
+    ):
+        raise ValueError("labels and predictions must be non-empty equal-length vectors")
+    if n_resamples <= 0 or not 0 < confidence < 1:
+        raise ValueError("invalid bootstrap inputs")
+
+    classes = np.unique(np.concatenate([targets, left, right]))
+
+    def score(predictions: np.ndarray, sample: np.ndarray | slice) -> float:
+        return float(
+            f1_score(
+                targets[sample],
+                predictions[sample],
+                labels=classes,
+                average="macro",
+                zero_division=0,
+            )
+        )
+
+    full = slice(None)
+    estimate = score(left, full) - score(right, full)
+    rng = np.random.default_rng(seed)
+    samples = np.empty(n_resamples, dtype=np.float64)
+    for index in range(n_resamples):
+        sample = rng.integers(0, len(targets), size=len(targets))
+        samples[index] = score(left, sample) - score(right, sample)
+    alpha = (1 - confidence) / 2
+    return {
+        "estimate": float(estimate),
+        "low": float(np.quantile(samples, alpha)),
+        "high": float(np.quantile(samples, 1 - alpha)),
+        "confidence": float(confidence),
+        "resamples": int(n_resamples),
+        "fraction_above_zero": float(np.mean(samples > 0)),
+    }
+
+
 def risk_coverage_curve(confidences: np.ndarray, correct: np.ndarray) -> list[dict[str, float]]:
     """Return empirical risk as progressively lower-confidence cases are deferred."""
     confidence_values = np.asarray(confidences, dtype=np.float64)

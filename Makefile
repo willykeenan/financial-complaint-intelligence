@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: help install-dev lint format-check test check
+.PHONY: help install-dev lint format-check test verify-evidence check
 
 help:
 	@printf '%s\n' \
@@ -8,7 +8,8 @@ help:
 		'lint         Run Ruff lint checks' \
 		'format-check Verify Ruff formatting without changing files' \
 		'test         Run the test suite' \
-		'check        Run all static checks and tests'
+		'verify-evidence Validate published aggregate evidence' \
+		'check        Run all static checks, tests, and evidence checks'
 
 install-dev:
 	$(PYTHON) -m pip install --editable '.[dev,demo]'
@@ -22,4 +23,7 @@ format-check:
 test:
 	$(PYTHON) -m pytest
 
-check: lint format-check test
+verify-evidence:
+	$(PYTHON) scripts/verify_forward_holdout.py
+
+check: lint format-check test verify-evidence

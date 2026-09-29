@@ -3,6 +3,7 @@ import numpy as np
 from complaint_intelligence.metrics import (
     bootstrap_macro_f1,
     classification_metrics,
+    paired_bootstrap_macro_f1_difference,
     risk_coverage_curve,
     wilson_interval,
 )
@@ -38,3 +39,26 @@ def test_risk_coverage_curve_is_sorted_by_declining_coverage() -> None:
     assert curve[0]["coverage"] == 1.0
     assert curve[-1]["coverage"] == 1 / 3
     assert all(curve[i]["coverage"] >= curve[i + 1]["coverage"] for i in range(2))
+
+
+def test_paired_bootstrap_difference_is_deterministic_and_directional() -> None:
+    labels = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+    better = labels.copy()
+    worse = np.array([0, 1, 1, 1, 0, 0, 2, 0, 1])
+    first = paired_bootstrap_macro_f1_difference(
+        labels,
+        better,
+        worse,
+        n_resamples=200,
+        seed=53353,
+    )
+    second = paired_bootstrap_macro_f1_difference(
+        labels,
+        better,
+        worse,
+        n_resamples=200,
+        seed=53353,
+    )
+    assert first == second
+    assert first["estimate"] > 0
+    assert first["fraction_above_zero"] > 0.9
